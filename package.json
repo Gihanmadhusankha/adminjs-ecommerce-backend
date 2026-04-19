@@ -1,0 +1,65 @@
+{
+  "name": "adminjs-ecommerce-backend",
+  "version": "1.0.0",
+  "description": "A secure Role-Based eCommerce Admin Dashboard built with AdminJS, Sequelize, and PostgreSQL. Features JWT authentication, custom dashboards, and managed access control for Admins and Regular Users.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --import tsx/esm src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalResolver": true,
+    "experimentalSpecifierResolution": "node"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gihanmadhusankha/adminjs-ecommerce-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Gihanmadhusankha/adminjs-ecommerce-backend/issues"
+  },
+  "homepage": "https://github.com/Gihanmadhusankha/adminjs-ecommerce-backend#readme",
+  "dependencies": {
+    "@adminjs/design-system": "^4.1.1",
+    "@adminjs/express": "^6.1.1",
+    "@adminjs/sequelize": "^4.1.1",
+    "@types/bcrypt": "^6.0.0",
+    "@types/styled-components": "^5.1.36",
+    "@types/styled-system": "^5.1.25",
+    "adminjs": "^7.8.17",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "express-formidable": "^1.2.0",
+    "express-session": "^1.19.0",
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "sequelize": "^6.37.8",
+    "styled-components": "^6.4.0",
+    "styled-system": "^5.1.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/express-formidable": "^1.2.4",
+    "@types/express-session": "^1.19.0",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/node": "^25.6.0",
+    "@types/react": "^18.2.28",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
