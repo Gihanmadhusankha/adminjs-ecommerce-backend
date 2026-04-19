@@ -1,11 +1,11 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
 dotenv.config();
-const dbHost = process.env.DB_HOST;
-if (!dbHost) {
-    throw new Error('DB_HOST environment variable is required');
+const dbHost = process.env.DB_HOST || 'localhost';
+if (!process.env.DB_HOST) {
+    console.warn('Warning: DB_HOST not set. Falling back to localhost — set DB_HOST in .env for production.');
 }
-const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
+const sequelize = new Sequelize(process.env.DB_NAME || 'postgres', process.env.DB_USER || 'postgres', process.env.DB_PASSWORD || '', {
     host: dbHost,
     dialect: 'postgres',
     port: Number(process.env.DB_PORT) || 5432,

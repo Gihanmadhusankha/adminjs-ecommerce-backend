@@ -8,6 +8,7 @@ export class Order extends Model {
     public id!: number;
     public totalAmount!: number;
     public status!: OrderType;
+    public userId!: number;
 }
 Order.init({
     id:{
@@ -17,12 +18,18 @@ Order.init({
     },
     totalAmount:{
         type:DataTypes.DECIMAL(10,2),
-        allowNull:false
+        allowNull:false,
+        defaultValue:0.00
     },
     status:{
         type:DataTypes.ENUM(...Object.values(OrderType)),
         defaultValue: OrderType.PENDING
+    },
+    userId:{
+        type:DataTypes.INTEGER,
+        allowNull:false
     }
+
 }, {
     sequelize,
     tableName: 'orders'

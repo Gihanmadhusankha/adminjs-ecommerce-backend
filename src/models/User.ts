@@ -1,6 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/db.js';
 import { UserRole } from '../enums/userRole.js';
+import bcrypt from 'bcrypt';
 
 export class User extends Model {
   public id!: number;
@@ -34,6 +35,20 @@ User.init(
   {
     sequelize,
     tableName: 'users',
+    hooks: {
+      beforeCreate: async (user: any) => {
+        if (user.password) {
+          const salt = await bcrypt.genSalt(10);
+          user.password = await bcrypt.hash(user.password, salt);
+        }
+      },
+      beforeUpdate: async (user: any) => {
+        if (user.changed('password')) {
+          const salt = await bcrypt.genSalt(10);
+          user.password = await bcrypt.hash(user.password, salt);
+        }
+      }
+    }
   }
 );
 

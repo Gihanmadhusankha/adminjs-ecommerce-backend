@@ -5,7 +5,7 @@ export class Setting extends Model {
   public id!: number;
   public key!: string;
   public value!: string;
-  public description?: string;
+  public description!: string;
 }
 
 Setting.init(
