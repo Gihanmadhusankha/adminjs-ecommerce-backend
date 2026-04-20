@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import * as userDao from '../dao/userDao.js';
 import { LoginResponse } from '../dtos/auth.dto.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'replace_this_secret';
+const JWT_SECRET = process.env.JWT_SECRET ;
 if (!process.env.JWT_SECRET) {
 	console.warn('Warning: JWT_SECRET is not set. Using default fallback secret — set JWT_SECRET in .env for production.');
 }

@@ -4,9 +4,9 @@ import * as AdminJSExpress from '@adminjs/express';
 import * as AdminJSSequelize from '@adminjs/sequelize';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
 import * as url from 'url';
 import path from 'path';
-import bcrypt from 'bcrypt';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
@@ -30,6 +30,7 @@ const componentLoader = new ComponentLoader();
 const Components = {
     Dashboard: componentLoader.add('Dashboard', path.resolve(__dirname, './admin/components/Dashboard.tsx')),
     SettingsPage: componentLoader.add('SettingsPage', path.resolve(__dirname, './admin/components/SettingsPage.tsx')),
+    SidebarPages: componentLoader.override('SidebarPages', path.resolve(__dirname, './admin/components/SidebarPages.tsx')),
 };
 
 AdminJS.registerAdapter(AdminJSSequelize);
@@ -66,12 +67,6 @@ const startServer = async () => {
                             delete: { isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin' },
                             new: {
                                 isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin',
-                                before: async (request: any) => {
-                                    if (request.payload.password) {
-                                        request.payload.password = await bcrypt.hash(request.payload.password, 10);
-                                    }
-                                    return request;
-                                },
                             },
                             edit: {
                                 isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin',
@@ -84,15 +79,24 @@ const startServer = async () => {
                                 },
 
                                 before: async (request: any) => {
-                                    if (request.payload.password && request.payload.password.length > 0) {
-                                        request.payload.password = await bcrypt.hash(request.payload.password, 10);
-                                    } else {
-
+                                    if (!request.payload.password || request.payload.password.length === 0) {
                                         delete request.payload.password;
                                     }
                                     return request;
                                 },
                             },
+                        }
+                    }
+                },
+                {
+                    resource: Category,
+                    options: {
+                        parent: { name: 'Inventory' },
+                        actions: {
+
+                            edit: { isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin' },
+                            new: { isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin' },
+                            delete: { isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin' },
                         }
                     }
                 },
@@ -108,18 +112,7 @@ const startServer = async () => {
                     },
                 },
 
-                {
-                    resource: Category,
-                    options: {
-                        parent: { name: 'Inventory' },
-                        actions: {
-
-                            edit: { isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin' },
-                            new: { isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin' },
-                            delete: { isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'admin' },
-                        }
-                    }
-                },
+                
 
 
                 {
@@ -233,7 +226,7 @@ const startServer = async () => {
                 {
                     resource: Setting,
                     options: {
-                        
+
                         parent: { name: 'Settings' },
                         listProperties: ['key', 'value', 'updatedAt'],
                         actions: {
@@ -288,7 +281,10 @@ const startServer = async () => {
             pages: {
                 'System Settings': {
                     handler: async (request: any, response: any, context: any) => {
-                        
+                        if (context?.currentAdmin?.role !== 'admin') {
+                            return response.status(403).json({ message: 'Forbidden' });
+                        }
+
                         const settings = await Setting.findAll();
                         const settingsMap: Record<string, any> = {};
                         settings.forEach((s: any) => {
@@ -351,6 +347,7 @@ const startServer = async () => {
         app.use(admin.options.rootPath, adminRouter);
 
         // 2. Middlewares (Global)
+        app.use(cookieParser());
         app.use(bodyParser.json());
         app.use(bodyParser.urlencoded({ extended: true }));
 

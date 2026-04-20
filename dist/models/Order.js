@@ -12,11 +12,16 @@ Order.init({
     },
     totalAmount: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        defaultValue: 0.00
     },
     status: {
         type: DataTypes.ENUM(...Object.values(OrderType)),
         defaultValue: OrderType.PENDING
+    },
+    userId: {
+        type: DataTypes.INTEGER,
+        allowNull: false
     }
 }, {
     sequelize,

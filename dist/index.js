@@ -4,6 +4,7 @@ import * as AdminJSExpress from '@adminjs/express';
 import * as AdminJSSequelize from '@adminjs/sequelize';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
 import * as url from 'url';
 import path from 'path';
 import bcrypt from 'bcrypt';
@@ -23,6 +24,7 @@ dotenv.config();
 const componentLoader = new ComponentLoader();
 const Components = {
     Dashboard: componentLoader.add('Dashboard', path.resolve(__dirname, './admin/components/Dashboard.tsx')),
+    SettingsPage: componentLoader.add('SettingsPage', path.resolve(__dirname, './admin/components/SettingsPage.tsx')),
 };
 AdminJS.registerAdapter(AdminJSSequelize);
 const startServer = async () => {
@@ -107,6 +109,14 @@ const startServer = async () => {
                     resource: Order,
                     options: {
                         parent: { name: 'Sales' },
+                        properties: {
+                            totalAmount: {
+                                isDisabled: true,
+                                isVisible: { list: true, show: true, edit: true, filter: true }
+                            },
+                        },
+                        listProperties: ['id', 'userId', 'totalAmount', 'status', 'createdAt'],
+                        showProperties: ['id', 'userId', 'totalAmount', 'status', 'createdAt'],
                         actions: {
                             list: {
                                 before: async (request, context) => {
@@ -117,6 +127,7 @@ const startServer = async () => {
                                     return request;
                                 },
                             },
+                            show: { isAccessible: true },
                             edit: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
                             new: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
                             delete: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
@@ -127,19 +138,51 @@ const startServer = async () => {
                     resource: OrderItem,
                     options: {
                         parent: { name: 'Sales' },
-                        actions: {
-                            list: {
-                                before: async (request, context) => {
-                                    const { currentAdmin } = context;
-                                    if (currentAdmin && currentAdmin.role !== 'admin') {
-                                        request.query = { ...request.query, 'where.userId': currentAdmin.id };
-                                    }
-                                    return request;
-                                },
+                        listProperties: ['id', 'orderId', 'productId', 'quantity', 'price'],
+                        properties: {
+                            price: {
+                                type: 'number',
+                                isDisabled: true,
+                                isVisible: { list: true, show: true, edit: true, filter: true },
+                                description: 'This price is automatically fetched from the selected product.'
                             },
-                            edit: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
-                            new: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
-                            delete: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
+                        },
+                        actions: {
+                            new: {
+                                isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin',
+                                after: async (response, request, context) => {
+                                    const { record } = response;
+                                    if (request.method === 'post' && record && record.id && !Object.keys(record.errors).length) {
+                                        const productId = record.params.productId;
+                                        const orderId = record.params.orderId;
+                                        if (productId && orderId) {
+                                            const product = await Product.findByPk(productId);
+                                            if (product) {
+                                                await OrderItem.update({ price: product.price }, { where: { id: record.id } });
+                                                const allItems = await OrderItem.findAll({
+                                                    where: { orderId: orderId }
+                                                });
+                                                const newTotal = allItems.reduce((sum, item) => {
+                                                    return sum + (Number(item.price) * Number(item.quantity));
+                                                }, 0);
+                                                await Order.update({ totalAmount: newTotal }, { where: { id: orderId } });
+                                            }
+                                        }
+                                    }
+                                    return response;
+                                },
+                                list: {
+                                    before: async (request, context) => {
+                                        const { currentAdmin } = context;
+                                        if (currentAdmin && currentAdmin.role !== 'admin') {
+                                            request.query = { ...request.query };
+                                        }
+                                        return request;
+                                    },
+                                },
+                                edit: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
+                                delete: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
+                            }
                         }
                     }
                 },
@@ -147,6 +190,7 @@ const startServer = async () => {
                     resource: Setting,
                     options: {
                         parent: { name: 'Settings' },
+                        listProperties: ['key', 'value', 'updatedAt'],
                         actions: {
                             list: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
                             show: { isAccessible: ({ currentAdmin }) => currentAdmin?.role === 'admin' },
@@ -165,12 +209,18 @@ const startServer = async () => {
                     const currentAdmin = context?.currentAdmin || request?.currentAdmin || request?.session?.admin || null;
                     console.log('currentAdmin:', currentAdmin);
                     if (currentAdmin && currentAdmin.role === 'admin') {
-                        const totalUsers = await User.count();
+                        const totalCustomers = await User.count({
+                            where: {
+                                role: 'user'
+                            }
+                        });
                         const totalOrders = await Order.count();
+                        const totalRevenue = await Order.sum('totalAmount') || 0;
                         return {
                             role: 'admin',
-                            totalUsers,
+                            totalUsers: totalCustomers,
                             totalOrders,
+                            totalRevenue: parseFloat(totalRevenue.toString()).toFixed(2),
                             message: 'Admin System Summary'
                         };
                     }
@@ -186,6 +236,19 @@ const startServer = async () => {
                     };
                 },
                 component: Components.Dashboard,
+            },
+            pages: {
+                'System Settings': {
+                    handler: async (request, response, context) => {
+                        const settings = await Setting.findAll();
+                        const settingsMap = {};
+                        settings.forEach((s) => {
+                            settingsMap[s.key] = s.value;
+                        });
+                        return { settings: settingsMap };
+                    },
+                    component: Components.SettingsPage,
+                },
             },
             locale: {
                 language: 'en',
@@ -214,7 +277,7 @@ const startServer = async () => {
             admin.watch();
         }
         // 4. AdminJS Authenticated Router
-        const adminRouter = AdminJSExpress.default.buildAuthenticatedRouter(admin, {
+        const adminRouter = AdminJSExpress.buildAuthenticatedRouter(admin, {
             authenticate: async (email, password) => {
                 try {
                     const result = await authService.login(email, password);
@@ -235,12 +298,13 @@ const startServer = async () => {
         });
         app.use(admin.options.rootPath, adminRouter);
         // 2. Middlewares (Global)
+        app.use(cookieParser());
         app.use(bodyParser.json());
         app.use(bodyParser.urlencoded({ extended: true }));
         const authRouter = new AuthRouter();
         authRouter.register(app, '/api');
         app.listen(PORT, () => {
-            console.log(` Server is running on http://localhost:${PORT}`);
+            console.log(`Server is running on http://localhost:${PORT}`);
             console.log(`AdminJS is available at http://localhost:${PORT}${admin.options.rootPath}`);
         });
     }

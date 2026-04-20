@@ -1,6 +1,7 @@
 import { DataTypes, Model } from "sequelize";
 import sequelize from "../config/db.js";
 import Order from "./Order.js";
+import { Product } from "./Product.js";
 export class OrderItem extends Model {
 }
 OrderItem.init({
@@ -15,7 +16,7 @@ OrderItem.init({
     },
     price: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: true
     }
 }, {
     sequelize,
@@ -23,4 +24,6 @@ OrderItem.init({
 });
 OrderItem.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
 Order.hasMany(OrderItem, { foreignKey: 'orderId', as: 'items' });
+OrderItem.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
+Product.hasMany(OrderItem, { foreignKey: 'productId', as: 'orderItems' });
 export default OrderItem;

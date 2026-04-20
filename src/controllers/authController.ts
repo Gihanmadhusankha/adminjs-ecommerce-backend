@@ -7,11 +7,11 @@ export const login = async (req: Request, res: Response) => {
 		const payload: LoginRequest = req.body;
 		const result = await authService.login(payload.email, payload.password);
 
-		// set token cookie for browser access to Admin pages
+		
 		try {
 			res.cookie('token', result.token, { httpOnly: true, sameSite: 'lax' });
 		} catch (e) {
-			// ignore if cookies can't be set
+			console.error('Failed to set cookie:', e);
 		}
 
 		return res.status(200).json(result);
